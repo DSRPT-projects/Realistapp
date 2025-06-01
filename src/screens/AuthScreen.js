@@ -12,11 +12,14 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth } from '../services/firebase';
+import { db } from '../services/db';
 
 const AuthScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [userId, setUserId] = useState('');
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
 
@@ -26,13 +29,63 @@ const AuthScreen = () => {
       return;
     }
 
+    if (!isLogin && !userId) {
+      Alert.alert('Error', 'Please enter a user ID');
+      return;
+    }
+
     setLoading(true);
     try {
       if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
+        const input = email.trim();
+        let userEmail = input;
+
+        // Check if input is a userId (doesn't contain @ or .)
+        if (!input.includes('@') && !input.includes('.')) {
+          const uidLower = input.toLowerCase().replace(/^@/, '');
+          
+          // Query Firestore for user with matching userId
+          const usersRef = collection(db, 'users');
+          const q = query(usersRef, where('userId', '==', uidLower));
+          const querySnapshot = await getDocs(q);
+          
+          if (querySnapshot.empty) {
+            Alert.alert('Error', 'User not found');
+            return;
+          }
+          
+          // Get the email from the first matching document
+          userEmail = querySnapshot.docs[0].data().email;
+        }
+
+        await signInWithEmailAndPassword(auth, userEmail, password);
         Alert.alert('Success', 'Logged in successfully!');
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userIdClean = userId.trim().toLowerCase().replace(/^@/, '');
+        
+        if (!userIdClean) {
+          Alert.alert('Error', 'Please enter a valid user ID');
+          return;
+        }
+
+        // Check if userId is already taken
+        const userDoc = await getDoc(doc(db, 'users', userIdClean));
+        if (userDoc.exists()) {
+          Alert.alert('Error', 'This user ID is already taken');
+          return;
+        }
+
+        // Create the user account
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        
+        // Store additional user data in Firestore
+        await setDoc(doc(db, 'users', userIdClean), {
+          email,
+          userId: userIdClean,
+          createdAt: Date.now(),
+          uid: userCredential.user.uid
+        });
+
         Alert.alert('Success', 'Account created successfully!');
       }
     } catch (error) {
@@ -52,14 +105,26 @@ const AuthScreen = () => {
           <Text style={styles.title}>{isLogin ? 'Welcome Back' : 'Create Account'}</Text>
           
           <View style={styles.form}>
+            {!isLogin && (
+              <TextInput
+                style={styles.input}
+                placeholder="User ID (e.g., @username)"
+                value={userId}
+                onChangeText={setUserId}
+                autoCapitalize="none"
+                autoComplete="off"
+                editable={!loading}
+              />
+            )}
+            
             <TextInput
               style={styles.input}
-              placeholder="Email"
+              placeholder={isLogin ? "Email or User ID" : "Email"}
               value={email}
               onChangeText={setEmail}
-              keyboardType="email-address"
+              keyboardType={isLogin ? "default" : "email-address"}
               autoCapitalize="none"
-              autoComplete="email"
+              autoComplete={isLogin ? "off" : "email"}
               editable={!loading}
             />
             
