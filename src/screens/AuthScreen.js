@@ -8,21 +8,37 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../services/firebase';
 
 const AuthScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const handleAuth = async () => {
-    // TODO: Implement Firebase authentication
-    if (isLogin) {
-      // Handle login
-      console.log('Login with:', email, password);
-    } else {
-      // Handle signup
-      console.log('Signup with:', email, password);
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (isLogin) {
+        await signInWithEmailAndPassword(auth, email, password);
+        Alert.alert('Success', 'Logged in successfully!');
+      } else {
+        await createUserWithEmailAndPassword(auth, email, password);
+        Alert.alert('Success', 'Account created successfully!');
+      }
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -44,6 +60,7 @@ const AuthScreen = () => {
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
+              editable={!loading}
             />
             
             <TextInput
@@ -54,20 +71,27 @@ const AuthScreen = () => {
               secureTextEntry
               autoCapitalize="none"
               autoComplete="password"
+              editable={!loading}
             />
 
             <TouchableOpacity
-              style={styles.authButton}
+              style={[styles.authButton, loading && styles.disabledButton]}
               onPress={handleAuth}
+              disabled={loading}
             >
-              <Text style={styles.authButtonText}>
-                {isLogin ? 'Login' : 'Sign Up'}
-              </Text>
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.authButtonText}>
+                  {isLogin ? 'Login' : 'Sign Up'}
+                </Text>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.switchButton}
               onPress={() => setIsLogin(!isLogin)}
+              disabled={loading}
             >
               <Text style={styles.switchButtonText}>
                 {isLogin
@@ -120,6 +144,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 8,
+  },
+  disabledButton: {
+    opacity: 0.7,
   },
   authButtonText: {
     color: '#FFFFFF',
