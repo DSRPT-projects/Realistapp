@@ -6,12 +6,12 @@ import {
     import AsyncStorage from '@react-native-async-storage/async-storage';
 // Your web app's Firebase configuration
 const firebaseConfig = {
-    apiKey: 'AIzaSyBZ0KE8NLwaykEKXUCjl4QU2KjRyQ6W9Ks',
+    apiKey: 'AIzaSyBZ0KE8NLxxxxxxx',
     authDomain: 'project-choir.firebaseapp.com',
     projectId: 'project-choir',
     storageBucket: 'project-choir.firebasestorage.app',
-    messagingSenderId: '282344050418',
-    appId: '1:282344050418:web:5426836d0e68df868f8a6b'
+    messagingSenderId: '2xxxxxx',
+    appId: '1:234568:web:123456'
 };
 
 
